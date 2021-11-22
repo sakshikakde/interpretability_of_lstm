@@ -7,7 +7,8 @@ https://www.csc.kth.se/cvap/actions/
 Use only running and walking dataset for now.
 You need to run create dataset to extract first 70 frames, and the run generate.sh. Change the appropriate variables in generate.sh
 
-
+# model
+https://drive.google.com/file/d/1fLNivCLBySCBPyb_WkozNTvTzkre9NV3/view?usp=sharing
 # How to run code 
 ## Train
 
