@@ -1,0 +1,11 @@
+*.jpg
+*.h5
+*.pyc
+/.vscode
+*.pth
+*.avi
+/data
+/snapshots
+/saliency
+/models
+/tf_logs
