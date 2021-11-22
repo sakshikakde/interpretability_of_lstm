@@ -21,6 +21,7 @@ from spatial_transforms import (
 from temporal_transforms import LoopPadding, TemporalRandomCrop
 from target_transforms import ClassLabel, VideoID
 from target_transforms import Compose as TargetCompose
+import numpy as np
 
 
 def resume_model(opt, model):
@@ -56,8 +57,7 @@ def predict(clip, model):
         outputs = F.softmax(outputs)
     print(outputs)
     scores, idx = torch.topk(outputs, k=1)
-    mask = scores > 0.6
-    preds = idx[mask]
+    preds = idx
     return preds
 
 
@@ -83,33 +83,30 @@ if __name__ == "__main__":
         model.eval()
 
         cam = cv2.VideoCapture(
-            '/home/sakshi/courses/CMSC828W/cnn-lstm/data/video_data/cello/v_PlayingCello_g19_c04.avi')
+            '/home/sakshi/courses/CMSC828W/cnn-lstm/data/kth_trimmed_data/running/0_person01_running_d1_uncomp.avi')
         clip = []
         total_frames = int(cam.get(cv2.CAP_PROP_FRAME_COUNT))
+        
         N = total_frames - 1
         print("total_frames = ", total_frames)
-        frame_count = 0
-        while total_frames > 0:
+
+        for i in range(total_frames):
             ret, img = cam.read()
-            print("clip length is ", len(clip))
-            if frame_count == N:
+            if len(clip) == N:
                 preds = predict(clip, model)
-                print("\n predictions = ", preds)
-                draw = img.copy()
+                print("predictions = ", preds)
+                print("Class = ", idx_to_class[preds.item()])
                 font = cv2.FONT_HERSHEY_SIMPLEX
                 if preds.size(0) != 0:
-                    print("here")
-                    print(idx_to_class[preds.item()])
-                    cv2.putText(draw, idx_to_class[preds.item()], (100, 100), font, .5, (255, 255, 255), 1, cv2.LINE_AA)
-                    cv2.imshow('window', draw)
-                    cv2.waitKey(1)
-                frame_count = 0
+                    for f in range(len(clip)):
+                        frame = np.array(clip[f])
+                        cv2.putText(frame, idx_to_class[preds.item()], (50, 50), font, .5, (255, 255, 255), 1, cv2.LINE_AA)
+                        cv2.imshow('window', frame)
+                        cv2.waitKey()
                 clip = []
 
-            #img = cv2.resize(img, (224,224))
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            #img = Image.fromarray(img.astype('uint8'), 'RGB')
             img = Image.fromarray(img)
             clip.append(img)
-            frame_count += 1
-            total_frames -= 1
+
+    cv2.destroyAllWindows()
