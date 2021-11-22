@@ -38,7 +38,7 @@ def class_process(dir_path, dst_dir_path, class_name):
     print('\n')
 
 if __name__=="__main__":
-  dir_path = './data/video_data'
+  dir_path = './data/trimmed_data'
   dst_dir_path = './data/image_data'
 
   for class_name in os.listdir(dir_path):

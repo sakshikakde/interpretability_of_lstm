@@ -138,7 +138,7 @@ def main_worker():
 
 			timestamp = time.strftime('%b-%d-%Y_%H%M', time.localtime())
 			state = {'epoch': epoch, 'state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}
-			torch.save(state, os.path.join('snapshots', f'{opt.model}-Epoch-{epoch}-Loss-{val_loss}_{timestamp}.pth'))
+			torch.save(state, os.path.join('snapshots/cnn_lstm', f'{opt.model}-Epoch-{epoch}-Loss-{val_loss}_{timestamp}.pth'))
 			print("Epoch {} model saved!\n".format(epoch))
 
 

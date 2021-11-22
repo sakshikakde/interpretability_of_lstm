@@ -4,7 +4,8 @@ from sklearn.model_selection import train_test_split
 # parser = argparse.ArgumentParser()
 # parser.add_argument('--data', type=str, default='./video_action_recognition', help='path to dataset')
 # opt = parser.parse_args()
-image_folder="./data/video_data"
+image_folder="./data/trimmed_data"
+video_folder = "trimmed_data"
 abs_path=os.path.dirname(os.path.abspath(image_folder))
 
 # cleans .txt files
@@ -16,7 +17,7 @@ open(os.path.join(abs_path,'trainval.txt'),'w').write("")
 # updates labels.txt 
 # fight 0
 # noFight 1
-labels=os.listdir(os.path.join(abs_path,"video_data"))
+labels=os.listdir(os.path.join(abs_path,video_folder))
 for i,label in enumerate(labels):
 	with open(os.path.join(abs_path,'classInd.txt'),'a') as f:
 		f.write(str(i)+" "+label)
@@ -31,7 +32,7 @@ for i in c[:len(c)-1]:
 
 # generating trainval.txt 
 for i,label in enumerate(labels):
-	vid_names=os.listdir(os.path.join(abs_path,"video_data",label))
+	vid_names=os.listdir(os.path.join(abs_path,video_folder,label))
 	for video_name in vid_names:
 		with open(os.path.join(abs_path,'trainval.txt'),'a') as f:
 			f.write(os.path.join(label,video_name)+ " " + dict_labels[label])

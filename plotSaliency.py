@@ -49,12 +49,17 @@ def plotHeatMapExampleWise(input, title, saveLocation,greyScale=False,flip=False
 
 def main(args):
     
-    save_folder = "/home/sakshi/courses/CMSC828W/cnn-lstm/saliency/"
-    ModelTypes = "lstm_cnn_fc"
+    save_folder = "/home/sakshi/courses/CMSC828W/cnn-lstm/saliency/temporal/"
+    ModelTypes = "lstm_cnn"
     block_number = 0
     file_name = ModelTypes+str(block_number) + ".npy"
     loaded_sal = np.load(save_folder + file_name)
     loaded_sal = (255 * (loaded_sal / np.max(loaded_sal))).astype(np.uint8)
+    print("---------------------------------------------")
+    print(loaded_sal[0,0])
+    print(loaded_sal[-1, -1])
+
+
     # frame_count = loaded_sal.shape[0]
     
     print("sal_shape = ", loaded_sal.shape)
