@@ -5,7 +5,14 @@ https://github.com/pranoyr/cnn-lstm
 # dataset
 https://www.csc.kth.se/cvap/actions/     
 Use only running and walking dataset for now.
-You need to run trim_dataset.py to extract first 70 frames, and the run generate.sh. Change the appropriate variables in generate.sh
+You need to run create dataset to extract first 70 frames, and the run generate.sh. Change the appropriate variables in generate.sh     
+the file structure should be like this:
+![alt text](https://github.com/sakshikakde/interpretability_of_lstm/blob/kth/doc_images/Screenshot%20from%202021-11-22%2016-48-26.png)
+
+
+raw videos is the actual kth dataset,
+trimmed one is after trim_videos.py
+
 
 # model
 https://drive.google.com/file/d/1fLNivCLBySCBPyb_WkozNTvTzkre9NV3/view?usp=sharing
