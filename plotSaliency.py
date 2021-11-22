@@ -1,12 +1,8 @@
-import argparse
-import sys
+import gi
+gi.require_version('Gtk', '2.0')
 import numpy as np
 import matplotlib.pylab as plt
 import matplotlib.colors as colors
-
-Loc_Graph = '../Graphs/'
-Results='../Results/'
-
 
 class MidpointNormalize(colors.Normalize):
     def __init__(self, vmin=None, vmax=None, midpoint=None, clip=False):
@@ -18,7 +14,14 @@ class MidpointNormalize(colors.Normalize):
         return np.ma.masked_array(np.interp(value, x, y))
 
 
-def plotHeatMapExampleWise(input, title, saveLocation,greyScale=False,flip=False,x_axis=None,y_axis=None,show=True):
+def plotHeatMapExampleWise(input,
+                           title, 
+                           saveLocation,
+                           greyScale=False,
+                           flip=False,
+                           x_axis=None,
+                           y_axis=None,
+                           show=True):
             
     if(flip):
         input=np.transpose(input)
@@ -45,42 +48,3 @@ def plotHeatMapExampleWise(input, title, saveLocation,greyScale=False,flip=False
 
     if(show):
         plt.show()
-
-
-def main(args):
-    
-    save_folder = "/home/sakshi/courses/CMSC828W/cnn-lstm/saliency/temporal/"
-    ModelTypes = "lstm_cnn"
-    block_number = 0
-    file_name = ModelTypes+str(block_number) + ".npy"
-    loaded_sal = np.load(save_folder + file_name)
-    loaded_sal = (255 * (loaded_sal / np.max(loaded_sal))).astype(np.uint8)
-    print("---------------------------------------------")
-    print(loaded_sal[0,0])
-    print(loaded_sal[-1, -1])
-
-
-    # frame_count = loaded_sal.shape[0]
-    
-    print("sal_shape = ", loaded_sal.shape)
-    plotHeatMapExampleWise(loaded_sal.T, ModelTypes+str(block_number), save_folder)
-
-    # for s in range(frame_count):
-    #     input = loaded_sal[s, :, :, :]
-    #     input = input.reshape(150, 150, 3)
-    #     # input = input / np.max(input) * 256
-    #     plotHeatMapExampleWise(input, str(s), save_folder)
-        
-  
-def parse_arguments(argv):
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--DataName', type=str ,default="TopBox")
-    parser.add_argument('--sequence_length', type=int, default=100)
-    parser.add_argument('--input_size', type=int,default=100)
-    parser.add_argument('--importance', type=str, default=0)
-    parser.add_argument('--data-dir', help='Data  directory', action='store', type=str ,default="../Data/")
-    return  parser.parse_args()
-
-if __name__ == '__main__':
-    main(parse_arguments(sys.argv[1:]))

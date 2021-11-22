@@ -22,6 +22,7 @@ from temporal_transforms import LoopPadding, TemporalRandomCrop
 from target_transforms import ClassLabel, VideoID
 from target_transforms import Compose as TargetCompose
 import numpy as np
+from plotSaliency import plotHeatMapExampleWise
 
 
 def resume_model(opt, model):
@@ -55,25 +56,8 @@ def saliency(clip, model, target_class):
     resout = model.resnet_out
     print("resout shape = ", resout[0].shape)
 
-    # hidden = None
-    # resnet_ops = []
-    # for i in range(clip.shape[1]):
-    #     input = clip[:, i, :, :, :]
-    #     resnet_op = model.resnet(input)
-    #     resnet_ops.cat(resnet_op, dim = 1)
-    #     lstm_op, hidden = model.lstm(resnet_op.unsqueeze(0), hidden)
-    
-    # resnet_ops = torch.stack(resnet_ops, dim=0)
-    # resnet_ops.requires_grad = True
-
-    # fc1_op = model.fc1(lstm_op[-1, :, :])
-    # fc1_op = F.relu(fc1_op)
-    # outputs = model.fc2(fc1_op)
-
-
     outputs = F.softmax(outputs, dim = 1)
     outputs, _ = torch.topk(outputs, k=1)   
-    # outputs = outputs[0, target_class]
     print(outputs)
     outputs.backward()
     grad = [] #resout.grad.data.cpu().numpy()
@@ -115,26 +99,23 @@ if __name__ == "__main__":
         opt.std = get_std(opt.norm_value)
         
         cam = cv2.VideoCapture(
-            '/home/sakshi/courses/CMSC828W/cnn-lstm/data/trimmed_data/running/0_person01_running_d1_uncomp.avi')
+            '/home/sakshi/courses/CMSC828W/cnn-lstm/data/kth_trimmed_data/running/0_person01_running_d1_uncomp.avi')
         total_frames = int(cam.get(cv2.CAP_PROP_FRAME_COUNT))
         N = total_frames-1
-        
         clip = []
-        frame_count = 0
-        block_count = 0
-        while total_frames > 0:
+        for i in range(total_frames):
             ret, img = cam.read()
-            print("clip length is ", len(clip))
-            if frame_count == N:
+            if len(clip) == N:
                 grad, sal = saliency(clip, model, 1)
-                print("Sal dim = ", sal.shape)
-                saveSaliency(sal.squeeze(), save_folder, ModelTypes + str(block_count))
-                block_count += 1
-                frame_count = 0
+                saveSaliency(sal.squeeze(), save_folder, ModelTypes)
                 clip = []
 
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(img)
             clip.append(img)
-            frame_count += 1
-            total_frames -= 1
+
+
+    #plot saliency
+    sal = (255 * (sal / np.max(sal))).astype(np.uint8)
+    plotHeatMapExampleWise(sal.T, ModelTypes, save_folder)
+
