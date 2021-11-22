@@ -117,6 +117,11 @@ def main_worker():
 		start_epoch = 1
 
 	# start training
+	best_val_accuracy = 0
+	best_state = None
+	best_epoch = None
+	best_val_loss = None
+
 	for epoch in range(start_epoch, opt.n_epochs + 1):
 		train_loss, train_acc = train_epoch(
 			model, train_loader, criterion, optimizer, epoch, opt.log_interval, device)
@@ -136,10 +141,22 @@ def main_worker():
 			summary_writer.add_scalar(
 				'acc/val_acc', val_acc * 100, global_step=epoch)
 
-			timestamp = time.strftime('%b-%d-%Y_%H%M', time.localtime())
+			# timestamp = time.strftime('%b-%d-%Y_%H%M', time.localtime())
 			state = {'epoch': epoch, 'state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}
-			torch.save(state, os.path.join('snapshots/cnn_lstm', f'{opt.model}-Epoch-{epoch}-Loss-{val_loss}_{timestamp}.pth'))
-			print("Epoch {} model saved!\n".format(epoch))
+			if(val_acc >= best_val_accuracy):
+				best_state = state
+				best_epoch = epoch
+				best_val_loss = val_loss
+				# torch.save(state, os.path.join('snapshots/cnn_lstm', f'{opt.model}-Epoch-{epoch}-Loss-{val_loss}_{timestamp}.pth'))
+				# print("Epoch {} model saved!\n".format(epoch))
+				best_val_accuracy = val_acc
+
+	if not os.path.exists("snapshots/"+opt.model):
+		os.mkdir("snapshots/" + opt.model)
+		
+	timestamp = time.strftime('%b-%d-%Y_%H%M', time.localtime())
+	torch.save(best_state, os.path.join("snapshots/" + opt.model, f'{opt.model}-Epoch-{best_epoch}-Loss-{best_val_loss}_{timestamp}.pth'))
+	print("Best model saved with val accuracy ", best_val_accuracy)
 
 
 if __name__ == "__main__":
