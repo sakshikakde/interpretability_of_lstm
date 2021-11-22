@@ -1,6 +1,6 @@
 # from datasets.kinetics import Kinetics
 # from datasets.activitynet import ActivityNet
-from datasets.ucf101 import UCF101
+from datasets.ucf101 import UCF101, KTH
 # from datasets.hmdb51 import HMDB51
 
 
@@ -8,6 +8,15 @@ def get_training_set(opt, spatial_transform, temporal_transform,
                      target_transform):
     if opt.dataset == 'ucf101':
         training_data = UCF101(
+            opt.video_path,
+            opt.annotation_path,
+            'training',
+            spatial_transform=spatial_transform,
+            temporal_transform=temporal_transform,
+            target_transform=target_transform)
+
+    if opt.dataset == 'kth':
+        training_data = KTH(
             opt.video_path,
             opt.annotation_path,
             'training',
@@ -30,7 +39,19 @@ def get_validation_set(opt, spatial_transform, temporal_transform,
             temporal_transform,
             target_transform,
             sample_duration=opt.sample_duration)
+    if opt.dataset == 'kth':
+        validation_data = KTH(
+            opt.video_path,
+            opt.annotation_path,
+            'validation',
+            opt.n_val_samples,
+            spatial_transform,
+            temporal_transform,
+            target_transform,
+            sample_duration=opt.sample_duration)
     return validation_data
+
+
 
 
 # def get_test_set(opt, spatial_transform, temporal_transform, target_transform):
