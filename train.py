@@ -26,7 +26,6 @@ class WeightClipper(object):
 
 def train_epoch(model, data_loader, criterion, optimizer, epoch, log_interval, device):
     model.train()
- 
     train_loss = 0.0
     losses = AverageMeter()
     accuracies = AverageMeter()
