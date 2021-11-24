@@ -28,7 +28,8 @@ python3 main.py --use_cuda --gpu 0 --batch_size 8 --n_epochs 50 --num_workers 0 
 python3 feature_saliency.py  --annotation_path ./data/kth/annotation/kth1.json  --dataset kth --model cnnlstm --n_classes 2 --resume_path <model_path>
 
 ## Get frame Saliency
-
+## TSR
+python3 frame_saliency.py  --annotation_path ./data/kth/annotation/kth1.json  --dataset kth --model cnnlstm --n_classes 2 --resume_path /home/sakshi/courses/CMSC828W/cnn-lstm/snapshots/cnnlstm/cnnlstm-Epoch-72-Loss-0.8406717499097188_Nov-23-2021_0311.p
     
 
 
