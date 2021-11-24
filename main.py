@@ -52,7 +52,7 @@ def get_loaders(opt):
 		# RandomHorizontalFlip(),
 		ToTensor(opt.norm_value), norm_method
 	])
-	temporal_transform = TemporalRandomCrop(16)
+	temporal_transform = None #TemporalRandomCrop(16)
 	target_transform = ClassLabel()
 	training_data = get_training_set(opt, spatial_transform,
 									 temporal_transform, target_transform)
@@ -70,7 +70,7 @@ def get_loaders(opt):
 		ToTensor(opt.norm_value), norm_method
 	])
 	target_transform = ClassLabel()
-	temporal_transform = LoopPadding(16)
+	temporal_transform = None #LoopPadding(16)
 	validation_data = get_validation_set(
 		opt, spatial_transform, temporal_transform, target_transform)
 	val_loader = torch.utils.data.DataLoader(
@@ -147,13 +147,11 @@ def main_worker():
 				best_state = state
 				best_epoch = epoch
 				best_val_loss = val_loss
-				# torch.save(state, os.path.join('snapshots/cnn_lstm', f'{opt.model}-Epoch-{epoch}-Loss-{val_loss}_{timestamp}.pth'))
-				# print("Epoch {} model saved!\n".format(epoch))
 				best_val_accuracy = val_acc
 
 	if not os.path.exists("snapshots/"+opt.model):
 		os.mkdir("snapshots/" + opt.model)
-		
+
 	timestamp = time.strftime('%b-%d-%Y_%H%M', time.localtime())
 	torch.save(best_state, os.path.join("snapshots/" + opt.model, f'{opt.model}-Epoch-{best_epoch}-Loss-{best_val_loss}_{timestamp}.pth'))
 	print("Best model saved with val accuracy ", best_val_accuracy)
