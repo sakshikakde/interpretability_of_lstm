@@ -31,7 +31,8 @@ python3 feature_saliency.py  --annotation_path ./data/kth/annotation/kth1.json  
 ## TSR
 python3 frame_saliency.py  --annotation_path ./data/kth/annotation/kth1.json  --dataset kth --model cnnlstm --n_classes 2 --resume_path /home/sakshi/courses/CMSC828W/cnn-lstm/snapshots/cnnlstm/cnnlstm-Epoch-72-Loss-0.8406717499097188_Nov-23-2021_0311.p
     
-
+## new model
+https://drive.google.com/file/d/11KT6b9pKAwP7zUBMyrJDlZRsG8qsTD5f/view?usp=sharingS
 
 
 
