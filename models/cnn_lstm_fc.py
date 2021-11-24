@@ -40,6 +40,7 @@ class CNNLSTM(nn.Module):
        
     def forward(self, x_3d, training = True):
         hidden = None
+    
         for t in range(x_3d.size(1)):
             if training:
                 with torch.no_grad():
