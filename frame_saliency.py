@@ -36,6 +36,10 @@ from captum.attr import (
     Occlusion
 )
 
+frame_size = 150
+get_TSR = False
+if not get_TSR:
+    print("NOT USING TSR")
 
 def resume_model(opt, model):
     """ Resume model 
@@ -183,19 +187,22 @@ def saliency(clip, model, device, target_class):
     clip = clip.unsqueeze(0)
     clip.requires_grad = True
     print("device: ", device)
+    print("Clip shape : ", clip.shape)
     outputs = model(clip, training = False)
     outputs = F.softmax(outputs, dim = 1)
     # outputs, _ = torch.topk(outputs, k=1)
     torch.cuda.empty_cache()
     print("Output = ", outputs)   
     saliency = Saliency(model)
-    # print("//////////////////////", target_class.item())
     grads = saliency.attribute(clip, target=target_class.item(), additional_forward_args=(False))
-    # tsr_grads = getTwoStepRescaling(saliency, clip, sequence_length = 69,
-    #                     input_size = (120, 120, 3), 
-    #                     TestingLabel = 1)
-    tsr_grads = grads
-    print("................... tsr_grads shape ", tsr_grads.shape)
+    if get_TSR:
+        tsr_grads = getTwoStepRescaling(saliency, clip, sequence_length = 69,
+                            input_size = (120, 120, 3), 
+                            TestingLabel = 1)
+    else:
+        tsr_grads = grads
+    print("grads shape ", grads.shape)
+    print("TSR grads shape ", tsr_grads.shape)
     return grads, tsr_grads
 
 def saveSaliency(saliency, folder_name, file_name):
@@ -227,58 +234,49 @@ if __name__ == "__main__":
     ModelTypes = "lstm_cnn"
     model.train()
 
+    image_folder_path = "./data/kth/image_data/running/0_person01_running_d2_uncomp"
+    if not os.path.exists(image_folder_path):
+        print("Check image path")
+        sys.exit()
+
     if opt.resume_path:
         resume_model(opt, model)
         opt.mean = get_mean(opt.norm_value, dataset=opt.mean_dataset)
         opt.std = get_std(opt.norm_value)
-        
-        cam = cv2.VideoCapture(
-            './data/kth_trimmed_data/running/0_person01_running_d1_uncomp.avi')
-        target = 1
-        total_frames = int(cam.get(cv2.CAP_PROP_FRAME_COUNT))
-        N = total_frames-1
+        images = [f for f in os.listdir(image_folder_path) if f.endswith('jpg')]
+        images = sorted(images, key=lambda x: int(x.split("_")[1].split(".")[0]))
         clip = []
-        for i in range(total_frames):
-            ret, img = cam.read()
-            if len(clip) == N:
-                grads, tsr_grads = saliency(clip, model, device, torch.tensor(target).to(device))
-                saveSaliency(tsr_grads.squeeze(), save_folder, "tsr/"+ ModelTypes + "_tsr_saliency")
-                saveSaliency(grads.squeeze(), save_folder, "grad/"+ ModelTypes + "_grad_saliency")
-                clip = []
+        target = 1
+        for image in images:
+            image_file = os.path.join(image_folder_path, image)
+            print("Opening file : ", image_file)
+            frame = cv2.imread(image_file)
+            frame = Image.fromarray(frame)
+            clip.append(frame)
 
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            img = Image.fromarray(img)
-            clip.append(img)
+        grads, tsr_grads = saliency(clip, model, device, torch.tensor(target).to(device))
+        saveSaliency(tsr_grads.squeeze(), save_folder, "tsr/"+ ModelTypes + "_tsr_saliency")
+        saveSaliency(grads.squeeze(), save_folder, "grad/"+ ModelTypes + "_grad_saliency")
 
-
-    #plot saliency
-    # sal = (255 * (sal / np.max(sal))).astype(np.uint8)
-    # plotHeatMapExampleWise(sal.T, ModelTypes, save_folder)
+    # plot saliency
     sal = grads.detach().numpy().squeeze()
     print("Sal shape : ", sal.shape)
+    sal = (sal - np.min(sal)) / (np.max(sal) - np.min(sal)) * 255
     if sal is not None:
         for t in range(sal.shape[0]):
             frame_sal = sal[t, 0, :, :]
-            # frame_sal = frame_sal.reshape(120, 120, 3)
-            frame_sal = cv2.normalize(frame_sal,
-                            frame_sal, 0, 255, cv2.NORM_MINMAX)
+            # frame_sal = frame_sal.reshape(frame_size, frame_size, 3)
             file_name = ModelTypes + "_spatial_saliency_frame_" + str(t) + ".png"
-            # cv2.imshow(file_name, frame_sal)
             cv2.imwrite(save_folder + "grad/"+ file_name, frame_sal)
-            # cv2.waitKey()
-            # cv2.destroyAllWindows()
 
-        sal = grads.detach().numpy().squeeze()
+    # plot saliency
     tsr_sal = tsr_grads.detach().numpy().squeeze()
-    print("TSR Sal shape : ", tsr_sal.shape)
+    print("tsr_sal shape : ", tsr_sal.shape)
+    tsr_sal = (tsr_sal - np.min(tsr_sal)) / (np.max(tsr_sal) - np.min(tsr_sal)) * 255
     if tsr_sal is not None:
-        for t in range(tsr_sal.shape[2]):
-            frame_sal = tsr_sal[:, :, t]
-            frame_sal = cv2.normalize(frame_sal,
-                            frame_sal, 0, 255, cv2.NORM_MINMAX)
-            file_name = ModelTypes + "_tsr_spatial_saliency_frame_" + str(t) + ".png"
-            # cv2.imshow(file_name, frame_sal)
-            cv2.imwrite(save_folder + "tsr/" + file_name, frame_sal)
-            # cv2.waitKey()
-            # cv2.destroyAllWindows()
+        for t in range(tsr_sal.shape[0]):
+            frame_sal = tsr_sal[t, 0, :, :]
+            # frame_sal = frame_sal.reshape(frame_size, frame_size, 3)
+            file_name = ModelTypes + "_tsr_saliency_frame_" + str(t) + ".png"
+            cv2.imwrite(save_folder + "tsr/"+ file_name, frame_sal)
 
