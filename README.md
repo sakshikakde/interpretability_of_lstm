@@ -38,8 +38,7 @@ trimmed one is after trim_videos.py
 
 
 # model
-https://drive.google.com/file/d/1fLNivCLBySCBPyb_WkozNTvTzkre9NV3/view?usp=sharing
-# How to run code 
+https://drive.google.com/file/d/1Ft0dUgL7im65hQev-BYElXnzpud2Xyv0/view?usp=sharing# How to run code 
 ## Train
 
 python3 main.py --use_cuda --gpu 0 --batch_size 8 --n_epochs 50 --num_workers 0  --annotation_path ./data/kth/annotation/kth1.json --video_path ./data/kth/image_data/  --dataset kth --sample_size 150 --lr_rate 1e-4 --n_classes 2
@@ -54,8 +53,8 @@ python3 feature_saliency.py  --annotation_path ./data/kth/annotation/kth1.json  
 ## TSR
 python3 frame_saliency.py  --annotation_path ./data/kth/annotation/kth1.json  --dataset kth --model cnnlstm --n_classes 2 --resume_path /home/sakshi/courses/CMSC828W/cnn-lstm/snapshots/cnnlstm/cnnlstm-Epoch-72-Loss-0.8406717499097188_Nov-23-2021_0311.p
     
-## new model
-https://drive.google.com/file/d/11KT6b9pKAwP7zUBMyrJDlZRsG8qsTD5f/view?usp=sharingS
+<!-- ## new model
+https://drive.google.com/file/d/11KT6b9pKAwP7zUBMyrJDlZRsG8qsTD5f/view?usp=sharingS -->
 
 
 
