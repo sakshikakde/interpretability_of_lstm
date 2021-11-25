@@ -176,7 +176,7 @@ def saliency(clip, model, device, target_class):
     if spatial_transform is not None:
         clip = [spatial_transform(img).to(device) for img in clip]
 
-    model.eval()
+    model.train()
   
     clip = torch.stack(clip, dim=0)
     clip.to(device)
@@ -225,7 +225,7 @@ if __name__ == "__main__":
 
     model = generate_model(opt, device)
     ModelTypes = "lstm_cnn"
-    model.eval()
+    model.train()
 
     if opt.resume_path:
         resume_model(opt, model)

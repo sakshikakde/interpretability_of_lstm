@@ -81,7 +81,7 @@ def saveSaliency(saliency, folder_name, file_name):
 if __name__ == "__main__":
     opt = parse_opts()
     print(opt)
-    save_folder = "/home/sakshi/courses/CMSC828W/cnn-lstm/saliency/temporal/"
+    save_folder = "./saliency/temporal/"
     data = load_annotation_data(opt.annotation_path)
     class_to_idx = get_class_labels(data)
     device = torch.device("cpu")
@@ -98,8 +98,7 @@ if __name__ == "__main__":
         opt.mean = get_mean(opt.norm_value, dataset=opt.mean_dataset)
         opt.std = get_std(opt.norm_value)
         
-        cam = cv2.VideoCapture(
-            '/home/sakshi/courses/CMSC828W/cnn-lstm/data/kth_trimmed_data/running/0_person01_running_d1_uncomp.avi')
+        cam = cv2.VideoCapture('./data/kth_trimmed_data/running/0_person01_running_d1_uncomp.avi')
         total_frames = int(cam.get(cv2.CAP_PROP_FRAME_COUNT))
         N = total_frames-1
         clip = []
