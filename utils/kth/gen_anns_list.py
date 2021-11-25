@@ -1,7 +1,7 @@
 import os 
 from sklearn.model_selection import train_test_split
 
-image_folder="./data/kth_trimmed_data"
+image_folder="../data/kth_trimmed_data"
 video_folder = "kth_trimmed_data"
 abs_path=os.path.dirname(os.path.abspath(image_folder))
 # cleans .txt files
@@ -58,10 +58,10 @@ for i,j in zip(X_test,y_test):
 	with open(os.path.join(abs_path,'testlist01.txt'),'a') as f:
 		f.write(i)
 		f.write('\n')
-os.system("mv ./data/classInd.txt ./data/kth/annotation/")
-os.system("mv ./data/testlist01.txt ./data/kth/annotation/")
-os.system("mv ./data/trainlist01.txt ./data/kth/annotation/")
-os.system("rm ./data/trainval.txt")
+os.system("mv ../data/classInd.txt ../data/kth/annotation/")
+os.system("mv ../data/testlist01.txt ../data/kth/annotation/")
+os.system("mv ../data/trainlist01.txt ../data/kth/annotation/")
+os.system("rm ../data/trainval.txt")
 
 # # generating train.txt 
 # for i,label in enumerate(labels):

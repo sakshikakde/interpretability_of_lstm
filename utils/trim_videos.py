@@ -6,8 +6,8 @@ import os
 from numpy.ma.core import reshape
 
 
-folder_path = "/home/sakshi/courses/CMSC828W/cnn-lstm/data/raw_dataset/kth_data/"
-data_save_path = "/home/sakshi/courses/CMSC828W/cnn-lstm/data/kth_trimmed_data/"
+folder_path = "../data/raw_dataset/kth_data/"
+data_save_path = "../data/kth_trimmed_data/"
 
 folders = os.listdir(folder_path)
 num_frames = 70

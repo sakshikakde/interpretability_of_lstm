@@ -180,7 +180,7 @@ def saliency(clip, model, device, target_class):
     if spatial_transform is not None:
         clip = [spatial_transform(img).to(device) for img in clip]
 
-    model.eval()
+    model.train()
   
     clip = torch.stack(clip, dim=0)
     clip.to(device)
@@ -208,7 +208,7 @@ def saveSaliency(saliency, folder_name, file_name):
 if __name__ == "__main__":
     opt = parse_opts()
     print(opt)
-    save_folder = "/home/sakshi/courses/CMSC828W/cnn-lstm/saliency/spatial/"
+    save_folder = "./saliency/spatial/"
     data = load_annotation_data(opt.annotation_path)
     class_to_idx = get_class_labels(data)
     use_cuda = True
@@ -220,15 +220,14 @@ if __name__ == "__main__":
 
     model = generate_model(opt, device)
     ModelTypes = "lstm_cnn"
-    model.eval()
+    model.train()
 
     if opt.resume_path:
         resume_model(opt, model)
         opt.mean = get_mean(opt.norm_value, dataset=opt.mean_dataset)
         opt.std = get_std(opt.norm_value)
         
-        cam = cv2.VideoCapture(
-            '/home/sakshi/courses/CMSC828W/cnn-lstm/data/kth_trimmed_data/running/0_person01_running_d1_uncomp.avi')
+        cam = cv2.VideoCapture('./data/kth_trimmed_data/running/0_person01_running_d1_uncomp.avi')
         target = 1
         total_frames = int(cam.get(cv2.CAP_PROP_FRAME_COUNT))
         N = total_frames-1

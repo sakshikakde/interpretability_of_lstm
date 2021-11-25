@@ -82,8 +82,7 @@ if __name__ == "__main__":
         opt.std = get_std(opt.norm_value)
         model.eval()
 
-        cam = cv2.VideoCapture(
-            '/home/sakshi/courses/CMSC828W/cnn-lstm/data/kth_trimmed_data/running/0_person01_running_d1_uncomp.avi')
+        cam = cv2.VideoCapture('./data/kth_trimmed_data/running/0_person01_running_d1_uncomp.avi')
         clip = []
         total_frames = int(cam.get(cv2.CAP_PROP_FRAME_COUNT))
         
