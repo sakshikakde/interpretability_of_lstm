@@ -3,6 +3,21 @@ https://github.com/ayaabdelsalam91/Input-Cell-Attention
 https://github.com/pranoyr/cnn-lstm     
 
 # dataset
+## Create your data
+mkdir data    
+cd data
+mkdir raw_dataset
+cd raw_dataset     
+wget http://www.nada.kth.se/cvap/actions/walking.zip     
+wget http://www.nada.kth.se/cvap/actions/running.zip   
+
+## Download pre processed data
+wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1sMn_BGhqmGdgZ0JKlodBwVB0Z5ppNqi_' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1sMn_BGhqmGdgZ0JKlodBwVB0Z5ppNqi_" -O data.zip && rm -rf /tmp/cookies.txt       
+unzip data.zip
+
+
+
+
 https://www.csc.kth.se/cvap/actions/     
 Use only running and walking dataset for now.
 You need to run create dataset to extract first 70 frames, and the run generate.sh. Change the appropriate variables in generate.sh     
@@ -35,8 +50,6 @@ python3 frame_saliency.py  --annotation_path ./data/kth/annotation/kth1.json  --
 https://drive.google.com/file/d/11KT6b9pKAwP7zUBMyrJDlZRsG8qsTD5f/view?usp=sharingS
 
 
-Anubhava, 
-Garam Tava
 
 
 
