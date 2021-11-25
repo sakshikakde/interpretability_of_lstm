@@ -36,7 +36,7 @@ from captum.attr import (
     Occlusion
 )
 
-frame_size = 150
+frame_size = 120
 get_TSR = False
 if not get_TSR:
     print("NOT USING TSR")
