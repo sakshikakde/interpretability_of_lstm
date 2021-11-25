@@ -6,10 +6,18 @@ https://github.com/pranoyr/cnn-lstm
 ## Create your data
 mkdir data    
 cd data
+mkdir kth    
 mkdir raw_dataset
 cd raw_dataset     
 wget http://www.nada.kth.se/cvap/actions/walking.zip     
-wget http://www.nada.kth.se/cvap/actions/running.zip   
+wget http://www.nada.kth.se/cvap/actions/running.zip
+
+
+cd Home    
+Trim videos:  python3 ./utils/trim_videos.py       
+Generate data: ./utils/generate_data.sh 
+  
+
 
 ## Download pre processed data
 wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1sMn_BGhqmGdgZ0JKlodBwVB0Z5ppNqi_' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1sMn_BGhqmGdgZ0JKlodBwVB0Z5ppNqi_" -O data.zip && rm -rf /tmp/cookies.txt       

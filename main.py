@@ -14,13 +14,8 @@ from model import generate_model
 from torch.optim import lr_scheduler
 from dataset import get_training_set, get_validation_set
 from mean import get_mean, get_std
-from spatial_transforms import (
-	Compose, Normalize, Scale, CenterCrop, CornerCrop, MultiScaleCornerCrop,
-	MultiScaleRandomCrop, RandomHorizontalFlip, ToTensor)
-from temporal_transforms import LoopPadding, TemporalRandomCrop
+from torchvision import transforms
 from target_transforms import ClassLabel, VideoID
-from target_transforms import Compose as TargetCompose
-
 import time
 
 
@@ -40,17 +35,20 @@ def get_loaders(opt):
 	"""
 	# train loader
 	opt.mean = get_mean(opt.norm_value, dataset=opt.mean_dataset)
+	# opt.std = get_std()
 	if opt.no_mean_norm and not opt.std_norm:
-		norm_method = Normalize([0, 0, 0], [1, 1, 1])
+		norm_method = transforms.Normalize([0, 0, 0], [1, 1, 1])
 	elif not opt.std_norm:
-		norm_method = Normalize(opt.mean, [1, 1, 1])
+		norm_method = transforms.Normalize(opt.mean, [1, 1, 1])
 	else:
-		norm_method = Normalize(opt.mean, opt.std)
-	spatial_transform = Compose([
+		norm_method = transforms.Normalize(opt.mean, opt.std)
+	spatial_transform = transforms.Compose([
 		# crop_method,
-		Scale((opt.sample_size, opt.sample_size)),
-		# RandomHorizontalFlip(),
-		ToTensor(opt.norm_value), norm_method
+		transforms.Scale((opt.sample_size, opt.sample_size)),
+		#grayscale
+		# transforms.Grayscale(num_output_channels=1),
+		transforms.ToTensor(), 
+		norm_method
 	])
 	temporal_transform = None #TemporalRandomCrop(16)
 	target_transform = ClassLabel()
@@ -64,10 +62,12 @@ def get_loaders(opt):
 		pin_memory=True)
 
 	# validation loader
-	spatial_transform = Compose([
-		Scale((opt.sample_size, opt.sample_size)),
-		# CenterCrop(opt.sample_size),
-		ToTensor(opt.norm_value), norm_method
+	spatial_transform = transforms.Compose([
+		transforms.Scale((opt.sample_size, opt.sample_size)),
+		# grayscale
+		# transforms.Grayscale(num_output_channels=1),
+		transforms.ToTensor(),
+		norm_method
 	])
 	target_transform = ClassLabel()
 	temporal_transform = None #LoopPadding(16)

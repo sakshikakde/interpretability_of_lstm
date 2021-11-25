@@ -33,6 +33,7 @@ def train_epoch(model, data_loader, criterion, optimizer, epoch, log_interval, d
 
     for batch_idx, (data, targets) in enumerate(data_loader):
         data, targets = data.to(device), targets.to(device)
+        # print("data shape : ", data.shape)
         outputs = model(data)
 
         loss = criterion(outputs, targets)

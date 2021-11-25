@@ -16,10 +16,7 @@ from datasets.ucf101 import get_class_labels
 from model import generate_model
 from utils import AverageMeter
 from opts import parse_opts
-from spatial_transforms import (
-    Compose, Normalize, Scale, CenterCrop, CornerCrop, MultiScaleCornerCrop,
-    MultiScaleRandomCrop, RandomHorizontalFlip, ToTensor)
-from temporal_transforms import LoopPadding, TemporalRandomCrop
+import torchvision.transforms as transforms
 from target_transforms import ClassLabel, VideoID
 from target_transforms import Compose as TargetCompose
 import numpy as np
@@ -166,17 +163,16 @@ def getTwoStepRescaling(Grad,
 
 def saliency(clip, model, device, target_class):
     if opt.no_mean_norm and not opt.std_norm:
-        norm_method = Normalize([0, 0, 0], [1, 1, 1])
+        norm_method = transforms.Normalize([0, 0, 0], [1, 1, 1])
     elif not opt.std_norm:
-        norm_method = Normalize(opt.mean, [1, 1, 1])
+        norm_method = transforms.Normalize(opt.mean, [1, 1, 1])
     else:
-        norm_method = Normalize(opt.mean, opt.std)
+        norm_method = transforms.Normalize(opt.mean, opt.std)
 
-    spatial_transform = Compose([
-        Scale((120, 120)),
-        ToTensor(opt.norm_value),
-        norm_method
-     ])
+    spatial_transform = transforms.Compose([transforms.Scale((opt.sample_size, opt.sample_size)), 
+    transforms.ToTensor(),
+    norm_method])
+
     if spatial_transform is not None:
         clip = [spatial_transform(img).to(device) for img in clip]
 
@@ -190,13 +186,15 @@ def saliency(clip, model, device, target_class):
     outputs = model(clip, training = False)
     outputs = F.softmax(outputs, dim = 1)
     # outputs, _ = torch.topk(outputs, k=1)
+    torch.cuda.empty_cache()
     print("Output = ", outputs)   
     saliency = Saliency(model)
     # print("//////////////////////", target_class.item())
     grads = saliency.attribute(clip, target=target_class.item(), additional_forward_args=(False))
-    tsr_grads = getTwoStepRescaling(saliency, clip, sequence_length = 69,
-                        input_size = (120, 120, 3), 
-                        TestingLabel = 1)
+    # tsr_grads = getTwoStepRescaling(saliency, clip, sequence_length = 69,
+    #                     input_size = (120, 120, 3), 
+    #                     TestingLabel = 1)
+    tsr_grads = grads
     print("................... tsr_grads shape ", tsr_grads.shape)
     return grads, tsr_grads
 
@@ -208,10 +206,17 @@ def saveSaliency(saliency, folder_name, file_name):
 if __name__ == "__main__":
     opt = parse_opts()
     print(opt)
-    save_folder = "/home/sakshi/courses/CMSC828W/cnn-lstm/saliency/spatial/"
+    save_folder = "./saliency/spatial/"
+    if not os.path.exists(save_folder):
+        os.mkdir(save_folder)
+    if not os.path.exists(save_folder + "tsr"):
+        os.mkdir(save_folder + "tsr")
+    if not os.path.exists(save_folder + "grad"):
+        os.mkdir(save_folder + "grad")
+
     data = load_annotation_data(opt.annotation_path)
     class_to_idx = get_class_labels(data)
-    use_cuda = True
+    use_cuda = False
     device = torch.device("cuda" if use_cuda else "cpu")
     print(class_to_idx)
     idx_to_class = {}
@@ -228,7 +233,7 @@ if __name__ == "__main__":
         opt.std = get_std(opt.norm_value)
         
         cam = cv2.VideoCapture(
-            '/home/sakshi/courses/CMSC828W/cnn-lstm/data/kth_trimmed_data/running/0_person01_running_d1_uncomp.avi')
+            './data/kth_trimmed_data/running/0_person01_running_d1_uncomp.avi')
         target = 1
         total_frames = int(cam.get(cv2.CAP_PROP_FRAME_COUNT))
         N = total_frames-1
@@ -264,10 +269,11 @@ if __name__ == "__main__":
             # cv2.destroyAllWindows()
 
         sal = grads.detach().numpy().squeeze()
-    print("TSR Sal shape : ", tsr_grads.shape)
-    if tsr_grads is not None:
-        for t in range(tsr_grads.shape[2]):
-            frame_sal = tsr_grads[:, :, t]
+    tsr_sal = tsr_grads.detach().numpy().squeeze()
+    print("TSR Sal shape : ", tsr_sal.shape)
+    if tsr_sal is not None:
+        for t in range(tsr_sal.shape[2]):
+            frame_sal = tsr_sal[:, :, t]
             frame_sal = cv2.normalize(frame_sal,
                             frame_sal, 0, 255, cv2.NORM_MINMAX)
             file_name = ModelTypes + "_tsr_spatial_saliency_frame_" + str(t) + ".png"
