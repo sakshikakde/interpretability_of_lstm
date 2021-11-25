@@ -38,7 +38,14 @@ trimmed one is after trim_videos.py
 
 
 # model
-https://drive.google.com/file/d/1Ft0dUgL7im65hQev-BYElXnzpud2Xyv0/view?usp=sharing# How to run code 
+## RESNET101     
+
+https://drive.google.com/file/d/1Ft0dUgL7im65hQev-BYElXnzpud2Xyv0/view?usp=sharing# 
+
+## RESNET18
+https://drive.google.com/file/d/10H_mJnJABIZZnIDSEUdvabm4gtk3JJMX/view?usp=sharing
+
+How to run code 
 ## Train
 
 python3 main.py --use_cuda --gpu 0 --batch_size 8 --n_epochs 50 --num_workers 0  --annotation_path ./data/kth/annotation/kth1.json --video_path ./data/kth/image_data/  --dataset kth --sample_size 150 --lr_rate 1e-4 --n_classes 2
