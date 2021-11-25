@@ -32,7 +32,7 @@ class FCModel(nn.Module):
 class CNNLSTM(nn.Module):
     def __init__(self, num_classes=2):
         super(CNNLSTM, self).__init__()
-        self.resnet = resnet101(pretrained=True)
+        self.resnet = resnet18(pretrained=True)
         self.resnet.fc = nn.Sequential(nn.Linear(self.resnet.fc.in_features, 300))
         self.lstm = LSTMModel()
         self.fc_layers = FCModel(num_classes)
