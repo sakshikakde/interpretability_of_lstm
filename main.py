@@ -62,17 +62,8 @@ def get_loaders(opt):
 		pin_memory=True)
 
 	# validation loader
-	spatial_transform = transforms.Compose([
-		transforms.Scale((opt.sample_size, opt.sample_size)),
-		# grayscale
-		# transforms.Grayscale(num_output_channels=1),
-		transforms.ToTensor(),
-		norm_method
-	])
-	target_transform = ClassLabel()
-	temporal_transform = None #LoopPadding(16)
-	validation_data = get_validation_set(
-		opt, spatial_transform, temporal_transform, target_transform)
+	validation_data = get_validation_set(opt, spatial_transform, 
+										temporal_transform, target_transform)
 	val_loader = torch.utils.data.DataLoader(
 		validation_data,
 		batch_size=opt.batch_size,
