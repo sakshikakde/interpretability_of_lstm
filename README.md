@@ -34,7 +34,11 @@ Generate data: ```./utils/generate_data.sh ```
 https://drive.google.com/file/d/1Ft0dUgL7im65hQev-BYElXnzpud2Xyv0/view?usp=sharing# 
 
 ## RESNET18
+### 70 frames
 https://drive.google.com/file/d/10H_mJnJABIZZnIDSEUdvabm4gtk3JJMX/view?usp=sharing
+
+### 30 frames
+https://drive.google.com/file/d/1BVMcI_Bd-vtJNN0hO5gN1vI18M5NQ8Yx/view?usp=sharing
 
 # How to run code 
 ## Train
