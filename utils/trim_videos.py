@@ -14,7 +14,7 @@ if not os.path.exists(data_save_path):
 if not os.path.exists(data_save_path):
     os.mkdir(data_save_path)
 folders = os.listdir(folder_path)
-num_frames = 70
+num_frames = 30
 frame_size = 120
 
 def getClassName(folder_path):
@@ -62,7 +62,7 @@ for folder in folders:
             w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             fps =  cap.get(cv2.CAP_PROP_FPS)
-            frame_start = 0
+            frame_start = 10
             video_write = cv2.VideoWriter(os.path.join(save_folder_name, str(frame_start) + "_"+ file), 
                             cv2.VideoWriter_fourcc(*'MJPG'),
                             fps, (frame_size, frame_size), 0)
