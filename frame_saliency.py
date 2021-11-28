@@ -37,9 +37,38 @@ from captum.attr import (
 )
 
 frame_size = 120
-get_TSR = False
+# make it param
+get_TSR = True
+sequence_length = 30
 if not get_TSR:
     print("NOT USING TSR")
+
+def plotSaliency(opt, grads, sal_type, save_folder, subfolder):
+    if(type(grads) == torch.Tensor):
+        sal = grads.detach().numpy().squeeze()
+    else:
+        sal = grads
+    print("Sal shape : ", sal.shape)
+    sal = (sal - np.min(sal)) / (np.max(sal) - np.min(sal)) * 255
+    if sal is not None:
+        for t in range(sal.shape[0]):
+            frame_sal = sal[t, 0, :, :]
+            file_name = opt.model + "_" + sal_type +"_" + str(t) + ".png"
+            cv2.imwrite(os.path.join(save_folder, subfolder, file_name), frame_sal)
+
+def plotTimeSal(opt, time_contribution, save_folder, subfolder, scaling = 30):
+    w = time_contribution.shape[0]
+    time_sal_text = np.zeros((int(4 * scaling), int(w * scaling)))
+
+    for t in range(w):
+        time_sal_text[:, t*scaling:(t+1)*scaling] = time_contribution[t]
+
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    for t in range(w):
+        cv2.putText(time_sal_text, str(t), (int((t * scaling)), int(2 * scaling)), font, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
+    file_name = opt.model + "_time_contribution.png"
+    cv2.imwrite(os.path.join(save_folder, subfolder, file_name), time_sal_text * 255)
+
 
 def resume_model(opt, model):
     """ Resume model 
@@ -52,6 +81,7 @@ def getTwoStepRescaling(Grad,
                         sequence_length,
                         input_size, 
                         TestingLabel,
+                        getFeatureImp = False,
                         hasBaseline=None,
                         hasFeatureMask=None,
                         hasSliding_window_shapes=None):
@@ -120,52 +150,54 @@ def getTwoStepRescaling(Grad,
     print("Done calculating time importance")  
     print("Time contribution shape : ", timeContibution.shape)
 
-    for t in range(sequence_length):
-        print("Calculating feature importance for frame ", t)
-        if(timeContibution[0,t]>meanTime):
-            for r in range(0, input_size[0], 10):
-                for c in range(0, input_size[1], 10):
-                    newInput = input.clone()
-                    newInput[0, 1, :, r:r+10, c:c+10] = assignment
-                    if(hasBaseline==None):  
-                        inputGrad_perInput = Grad.attribute(newInput,
-                                                            target=TestingLabel,
-                                                            additional_forward_args=(False)).data.cpu().numpy()
-                    else:
-                        if(hasFeatureMask!=None):
+    if getFeatureImp:
+        for t in range(sequence_length):
+            print("Calculating feature importance for frame ", t)
+            if(timeContibution[0,t]>meanTime):
+                for r in range(0, input_size[0], 10):
+                    for c in range(0, input_size[1], 10):
+                        newInput = input.clone()
+                        newInput[0, 1, :, r:r+10, c:c+10] = assignment
+                        if(hasBaseline==None):  
                             inputGrad_perInput = Grad.attribute(newInput,
-                                                baselines=hasBaseline,
-                                                target=TestingLabel,
-                                                feature_mask=hasFeatureMask,
-                                                additional_forward_args=(False)).data.cpu().numpy()    
-                        elif(hasSliding_window_shapes!=None):
-                            inputGrad_perInput = Grad.attribute(newInput,
-                                                                sliding_window_shapes=hasSliding_window_shapes,
-                                                                baselines=hasBaseline, 
                                                                 target=TestingLabel,
                                                                 additional_forward_args=(False)).data.cpu().numpy()
                         else:
-                            inputGrad_perInput = Grad.attribute(newInput,
-                                                                baselines=hasBaseline,
-                                                                target=TestingLabel,
-                                                                additional_forward_args=(False)).data.cpu().numpy()
+                            if(hasFeatureMask!=None):
+                                inputGrad_perInput = Grad.attribute(newInput,
+                                                    baselines=hasBaseline,
+                                                    target=TestingLabel,
+                                                    feature_mask=hasFeatureMask,
+                                                    additional_forward_args=(False)).data.cpu().numpy()    
+                            elif(hasSliding_window_shapes!=None):
+                                inputGrad_perInput = Grad.attribute(newInput,
+                                                                    sliding_window_shapes=hasSliding_window_shapes,
+                                                                    baselines=hasBaseline, 
+                                                                    target=TestingLabel,
+                                                                    additional_forward_args=(False)).data.cpu().numpy()
+                            else:
+                                inputGrad_perInput = Grad.attribute(newInput,
+                                                                    baselines=hasBaseline,
+                                                                    target=TestingLabel,
+                                                                    additional_forward_args=(False)).data.cpu().numpy()
 
 
 
-                    inputGrad_perInput=np.absolute(ActualGrad - inputGrad_perInput)
-                    inputGrad[r:r+10, c:c+10, 0] = np.sum(inputGrad_perInput)
+                        inputGrad_perInput=np.absolute(ActualGrad - inputGrad_perInput)
+                        inputGrad[r:r+10, c:c+10, 0] = np.sum(inputGrad_perInput)
 
-                featureContibution = inputGrad #preprocessing.minmax_scale(inputGrad)
-        else:
-            featureContibution=np.ones((input_size[0], input_size[1], 1))*0.1
+                    featureContibution = inputGrad #preprocessing.minmax_scale(inputGrad)
+            else:
+                featureContibution=np.ones((input_size[0], input_size[1], 1))*0.1
 
-        for r in range(0, input_size[0], 10):
-            for c in range(0, input_size[1], 10):
-                newGrad [r:r+10, c:c+10, t]= timeContibution[0,t]*featureContibution[r:r+10, c:c+10, 0]
-    return newGrad
+            for r in range(0, input_size[0], 10):
+                for c in range(0, input_size[1], 10):
+                    newGrad [r:r+10, c:c+10, t]= timeContibution[0,t]*featureContibution[r:r+10, c:c+10, 0]
+    else:
+        newGrad = ActualGrad
+    return newGrad, timeContibution
 
-
-def saliency(clip, model, device, target_class):
+def predict(clip, model):
     if opt.no_mean_norm and not opt.std_norm:
         norm_method = transforms.Normalize([0, 0, 0], [1, 1, 1])
     elif not opt.std_norm:
@@ -173,37 +205,43 @@ def saliency(clip, model, device, target_class):
     else:
         norm_method = transforms.Normalize(opt.mean, opt.std)
 
-    spatial_transform = transforms.Compose([transforms.Scale((opt.sample_size, opt.sample_size)), 
+    spatial_transform = transforms.Compose([transforms.Resize((opt.sample_size, opt.sample_size)), 
     transforms.ToTensor(),
     norm_method])
 
     if spatial_transform is not None:
         clip = [spatial_transform(img).to(device) for img in clip]
 
-    model.train()
-  
+    model.eval()
     clip = torch.stack(clip, dim=0)
-    clip.to(device)
     clip = clip.unsqueeze(0)
-    clip.requires_grad = True
-    print("device: ", device)
-    print("Clip shape : ", clip.shape)
-    outputs = model(clip, training = False)
-    outputs = F.softmax(outputs, dim = 1)
-    # outputs, _ = torch.topk(outputs, k=1)
-    torch.cuda.empty_cache()
-    print("Output = ", outputs)   
+    with torch.no_grad():
+        print(clip.shape)
+        outputs = model(clip)
+        outputs = F.softmax(outputs)
+    print("After softmax : ", outputs)
+    scores, idx = torch.topk(outputs, k=1)
+    preds = idx
+    return clip, preds
+
+def saliency(clip, model, device, target_class):
+    clip, prediction = predict(clip, model)
+    print("Output = ", idx_to_class[prediction.item()]) 
     saliency = Saliency(model)
-    grads = saliency.attribute(clip, target=target_class.item(), additional_forward_args=(False))
+    grads = saliency.attribute(clip, 
+                               target=prediction.item(),
+                               additional_forward_args=(False))
     if get_TSR:
-        tsr_grads = getTwoStepRescaling(saliency, clip, sequence_length = 69,
+        tsr_grads, timeContibution = getTwoStepRescaling(saliency, clip, sequence_length = sequence_length,
                             input_size = (120, 120, 3), 
                             TestingLabel = 1)
     else:
         tsr_grads = grads
+        timeContibution = np.zeros((1, sequence_length))
     print("grads shape ", grads.shape)
+    print("TSR time contribution shape : ", timeContibution.shape)
     print("TSR grads shape ", tsr_grads.shape)
-    return grads, tsr_grads
+    return grads.squeeze(), tsr_grads.squeeze(), timeContibution.squeeze()
 
 def saveSaliency(saliency, folder_name, file_name):
     np.save(folder_name + file_name, saliency)
@@ -212,71 +250,72 @@ def saveSaliency(saliency, folder_name, file_name):
 
 if __name__ == "__main__":
     opt = parse_opts()
-    print(opt)
-    save_folder = "./saliency/spatial/"
-    if not os.path.exists(save_folder):
-        os.mkdir(save_folder)
-    if not os.path.exists(save_folder + "tsr"):
-        os.mkdir(save_folder + "tsr")
-    if not os.path.exists(save_folder + "grad"):
-        os.mkdir(save_folder + "grad")
-
     data = load_annotation_data(opt.annotation_path)
     class_to_idx = get_class_labels(data)
-    use_cuda = False
-    device = torch.device("cuda" if use_cuda else "cpu")
-    print(class_to_idx)
-    idx_to_class = {}
-    for name, label in class_to_idx.items():
-        idx_to_class[label] = name
+    # make it param
+    image_folder_path = "./data/kth/image_data/"
+    classes = os.listdir(image_folder_path)
+    for c in classes:
+        dataset = os.listdir(os.path.join(image_folder_path, c))
+        for d in dataset:
+            dataset_path = os.path.join(os.path.join(image_folder_path, c, d))
+            print("......................Calculating saliency for ", dataset_path)
+            save_folder = os.path.join(os.path.join("./saliency/spatial/", d))
+            if not os.path.exists(save_folder):
+                os.mkdir(save_folder)
+            if not os.path.exists(save_folder + "/tsr"):
+                os.mkdir(save_folder + "/tsr")
+            if not os.path.exists(save_folder + "/grad"):
+                os.mkdir(save_folder + "/grad")
 
-    model = generate_model(opt, device)
-    ModelTypes = "lstm_cnn"
-    model.train()
+            data = load_annotation_data(opt.annotation_path)
+            class_to_idx = get_class_labels(data)
+            use_cuda = False
+            device = torch.device("cuda" if use_cuda else "cpu")
+            print(class_to_idx)
+            idx_to_class = {}
+            for name, label in class_to_idx.items():
+                idx_to_class[label] = name
 
-    image_folder_path = "./data/kth/image_data/running/0_person01_running_d2_uncomp"
-    if not os.path.exists(image_folder_path):
-        print("Check image path")
-        sys.exit()
+            model = generate_model(opt, device)
 
-    if opt.resume_path:
-        resume_model(opt, model)
-        opt.mean = get_mean(opt.norm_value, dataset=opt.mean_dataset)
-        opt.std = get_std(opt.norm_value)
-        images = [f for f in os.listdir(image_folder_path) if f.endswith('jpg')]
-        images = sorted(images, key=lambda x: int(x.split("_")[1].split(".")[0]))
-        clip = []
-        target = 1
-        for image in images:
-            image_file = os.path.join(image_folder_path, image)
-            print("Opening file : ", image_file)
-            frame = cv2.imread(image_file)
-            frame = Image.fromarray(frame)
-            clip.append(frame)
+            if not os.path.exists(dataset_path):
+                print("Check image path")
+                sys.exit()
 
-        grads, tsr_grads = saliency(clip, model, device, torch.tensor(target).to(device))
-        saveSaliency(tsr_grads.squeeze(), save_folder, "tsr/"+ ModelTypes + "_tsr_saliency")
-        saveSaliency(grads.squeeze(), save_folder, "grad/"+ ModelTypes + "_grad_saliency")
+            if opt.resume_path:
+                resume_model(opt, model)
+                opt.mean = get_mean(opt.norm_value, dataset=opt.mean_dataset)
+                opt.std = get_std(opt.norm_value)
+                images = [f for f in os.listdir(dataset_path) if f.endswith('jpg')]
+                images = sorted(images, key=lambda x: int(x.split("_")[1].split(".")[0]))
+                clip = []
+                target = 0
+                for image in images:
+                    image_file = os.path.join(dataset_path, image)
+                    print("Opening file : ", image_file)
+                    frame = cv2.imread(image_file)
+                    frame = Image.fromarray(frame)
+                    clip.append(frame)
 
-    # plot saliency
-    sal = grads.detach().numpy().squeeze()
-    print("Sal shape : ", sal.shape)
-    sal = (sal - np.min(sal)) / (np.max(sal) - np.min(sal)) * 255
-    if sal is not None:
-        for t in range(sal.shape[0]):
-            frame_sal = sal[t, 0, :, :]
-            # frame_sal = frame_sal.reshape(frame_size, frame_size, 3)
-            file_name = ModelTypes + "_spatial_saliency_frame_" + str(t) + ".png"
-            cv2.imwrite(save_folder + "grad/"+ file_name, frame_sal)
+                grads, tsr_grads, time_contribution = saliency(clip, model, device, torch.tensor(target).to(device))
+                saveSaliency(time_contribution, save_folder, "/tsr/"+ opt.model + "_tsr_time_contribution")
+                saveSaliency(tsr_grads, save_folder, "/tsr/"+ opt.model + "_tsr_saliency")
+                saveSaliency(grads, save_folder, "/grad/"+ opt.model + "_grad_saliency")
 
-    # plot saliency
-    tsr_sal = tsr_grads.detach().numpy().squeeze()
-    print("tsr_sal shape : ", tsr_sal.shape)
-    tsr_sal = (tsr_sal - np.min(tsr_sal)) / (np.max(tsr_sal) - np.min(tsr_sal)) * 255
-    if tsr_sal is not None:
-        for t in range(tsr_sal.shape[0]):
-            frame_sal = tsr_sal[t, 0, :, :]
-            # frame_sal = frame_sal.reshape(frame_size, frame_size, 3)
-            file_name = ModelTypes + "_tsr_saliency_frame_" + str(t) + ".png"
-            cv2.imwrite(save_folder + "tsr/"+ file_name, frame_sal)
+                # plot saliency
+                print("Plotting saliency")
+                plotSaliency(opt, grads, "grad_saliency_frame", save_folder, "grad")
+                if get_TSR:
+                    plotTimeSal(opt, time_contribution, save_folder, "tsr", scaling = 30)
+                    #time scaled saliency
+                    scaled_tsr_array = []
+                    for t in range(sequence_length):
+                        frame_sal = grads[t, 0, :, :]
+                        scaled_sal = frame_sal * time_contribution[t]
+                        scaled_tsr_array.append(scaled_sal.detach().numpy())
+                    scaled_tsr_array = np.array(scaled_tsr_array)
+                    plotSaliency(opt, tsr_grads, "tsr_saliency_frame", save_folder, "tsr")
+
+
 
