@@ -22,7 +22,8 @@ def get_training_set(opt, spatial_transform, temporal_transform,
             'training',
             spatial_transform=spatial_transform,
             temporal_transform=temporal_transform,
-            target_transform=target_transform)
+            target_transform=target_transform,
+            sample_duration=opt.sample_duration)
 
     return training_data
 
