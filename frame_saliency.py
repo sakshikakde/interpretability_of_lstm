@@ -25,6 +25,7 @@ from  sklearn import preprocessing
 import gc
 import copy
 import psutil
+import resource
 
 from captum.attr import (
     GradientShap,
@@ -174,7 +175,6 @@ def getTwoStepRescaling(Grad,
                     for r in range(0, input_size[0], 10):
                         for c in range(0, input_size[1], 10):
                             # print(torch.cuda.memory_stats(device=device)['active.all.allocated'])
-                            # print(np.shape(input))
                             newInput = copy.deepcopy(input)
                             newInput[0, 1, :, r:r+10, c:c+10] = assignment
                             if(hasBaseline==None):  
@@ -187,8 +187,8 @@ def getTwoStepRescaling(Grad,
                                 del inputGrad_perInput
                                 del newInput
 
-                                print("CPU percent {}".format(psutil.cpu_percent()))
-                                print("RAM percent {}".format(psutil.virtual_memory().percent))
+                                # print("CPU percent {}".format(psutil.cpu_percent()))
+                                # print("RAM percent {}".format(psutil.virtual_memory().percent))
                                 print("After inputgrad and copy {}".format(torch.cuda.memory_allocated('cuda:0')))
                             else:
                                 if(hasFeatureMask!=None):
@@ -280,7 +280,23 @@ def saveSaliency(saliency, folder_name, file_name):
     print("Saliency maps saved as ", file_name)
 
 
+def memory_limit(percentage):
+    soft, hard = resource.getrlimit(resource.RLIMIT_AS)
+    resource.setrlimit(resource.RLIMIT_AS, (get_memory() * (1024*percentage), hard))
+
+def get_memory():
+    with open('/proc/meminfo', 'r') as mem:
+        free_memory = 0
+        for i in mem:
+            sline = i.split()
+            if str(sline[0]) in ('MemFree:', 'Buffers:', 'Cached:'):
+                free_memory += int(sline[1])
+    return free_memory
+
 if __name__ == "__main__":
+
+    memory_limit(0.8) # Set RAM memory limit. Value specifies percentage.
+
     opt = parse_opts()
     data = load_annotation_data(opt.annotation_path)
     class_to_idx = get_class_labels(data)
