@@ -22,6 +22,9 @@ from target_transforms import Compose as TargetCompose
 import numpy as np
 from plotSaliency import plotHeatMapExampleWise
 from  sklearn import preprocessing
+import gc
+import copy
+import psutil
 
 from captum.attr import (
     GradientShap,
@@ -81,62 +84,66 @@ def getTwoStepRescaling(Grad,
                         sequence_length,
                         input_size, 
                         TestingLabel,
-                        getFeatureImp = False,
+                        getFeatureImp = True,
                         hasBaseline=None,
                         hasFeatureMask=None,
                         hasSliding_window_shapes=None):
     assignment=input[0, 0, 0, 0, 0]
     print("Input shape ", input.shape)
+
+    input = input.cpu().detach().numpy()
+    assignment = assignment.cpu().detach().numpy()
+    
     timeGrad=np.zeros((1, sequence_length))
     inputGrad=np.zeros((input_size[0], input_size[1] , 1))
     newGrad=np.zeros((input_size[0], input_size[1], sequence_length), dtype = np.float32)
     if(hasBaseline==None):  
-        ActualGrad = Grad.attribute(input,
+        ActualGrad = Grad.attribute(torch.from_numpy(input),
                             target=TestingLabel,
                             additional_forward_args=(False)).data.cpu().numpy()
     else:
         if(hasFeatureMask!=None):
-            ActualGrad = Grad.attribute(input,
+            ActualGrad = Grad.attribute(torch.from_numpy(input),
                                         baselines=hasBaseline,
                                         target=TestingLabel,
                                         feature_mask=hasFeatureMask,
                                         additional_forward_args=(False)).data.cpu().numpy()    
         elif(hasSliding_window_shapes!=None):
-            ActualGrad = Grad.attribute(input,
+            ActualGrad = Grad.attribute(torch.from_numpy(input),
                                         sliding_window_shapes=hasSliding_window_shapes,
                                         baselines=hasBaseline,
                                         target=TestingLabel,
                                         additional_forward_args=(False)).data.cpu().numpy()
         else:
-            ActualGrad = Grad.attribute(input,
+            ActualGrad = Grad.attribute(torch.from_numpy(input),
                                         baselines=hasBaseline,
                                         target=TestingLabel,
                                         additional_forward_args=(False)).data.cpu().numpy()
 
     for t in range(sequence_length):
         print("Temporal saliency for t = ", t)
-        newInput = input.clone()
+        newInput = copy.deepcopy(input)
         newInput[0, t, :,:,:] = assignment
         
         if(hasBaseline==None):  
-            timeGrad_perTime = Grad.attribute(newInput,
+            timeGrad_perTime = Grad.attribute(torch.from_numpy(newInput),
                                             target=TestingLabel,
                                             additional_forward_args=(False)).data.cpu().numpy()
         else:
             if(hasFeatureMask!=None):
-                timeGrad_perTime = Grad.attribute(newInput,
+                timeGrad_perTime = Grad.attribute(torch.from_numpy(newInput),
                                                   baselines=hasBaseline,
                                                   target=TestingLabel,
                                                   feature_mask=hasFeatureMask,
                                                   additional_forward_args=(False)).data.cpu().numpy()    
             elif(hasSliding_window_shapes!=None):
-                timeGrad_perTime = Grad.attribute(newInput,
+                timeGrad_perTime = Grad.attribute(torch.from_numpy(newInput),
                                                 sliding_window_shapes=hasSliding_window_shapes,
                                                 baselines=hasBaseline,
                                                 target=TestingLabel,
                                                 additional_forward_args=(False)).data.cpu().numpy()
             else:
-                timeGrad_perTime = Grad.attribute(newInput,
+                timeGrad_perTime = Grad.attribute(torch.from_numpy(newInput),
                                                 baselines=hasBaseline,
                                                 target=TestingLabel,
                                                 additional_forward_args=(False)).data.cpu().numpy()
@@ -145,57 +152,82 @@ def getTwoStepRescaling(Grad,
         timeGrad_perTime= np.absolute(ActualGrad - timeGrad_perTime)
         timeGrad[:,t] = np.sum(timeGrad_perTime)
 
+    del timeGrad_perTime
+
     timeContibution=preprocessing.minmax_scale(timeGrad, axis=1)
     meanTime = np.quantile(timeContibution, .55)  
     print("Done calculating time importance")  
     print("Time contribution shape : ", timeContibution.shape)
+    print("Sequence lenght is {}".format(sequence_length))
+    t = 0
 
-    if getFeatureImp:
-        for t in range(sequence_length):
-            print("Calculating feature importance for frame ", t)
-            if(timeContibution[0,t]>meanTime):
+    with torch.no_grad():
+        if getFeatureImp:
+            while (t < sequence_length):
+                print("Calculating feature importance for frame ", t)
+                gc.collect()
+                torch.cuda.empty_cache()
+                print("Memory allocated is {}".format((torch.cuda.memory_allocated())))
+                print("Memory reserved is {}".format(torch.cuda.memory_reserved()))
+                if(timeContibution[0,t]>meanTime):
+                    print("In if")
+                    for r in range(0, input_size[0], 10):
+                        for c in range(0, input_size[1], 10):
+                            # print(torch.cuda.memory_stats(device=device)['active.all.allocated'])
+                            # print(np.shape(input))
+                            newInput = copy.deepcopy(input)
+                            newInput[0, 1, :, r:r+10, c:c+10] = assignment
+                            if(hasBaseline==None):  
+
+                                inputGrad_perInput = Grad.attribute(torch.from_numpy(newInput),
+                                                                    target=TestingLabel,
+                                                                    additional_forward_args=(False))
+                                inputGrad_perInput_numpy = inputGrad_perInput.data.detach().cpu().numpy()
+
+                                del inputGrad_perInput
+                                del newInput
+
+                                print("CPU percent {}".format(psutil.cpu_percent()))
+                                print("RAM percent {}".format(psutil.virtual_memory().percent))
+                                print("After inputgrad and copy {}".format(torch.cuda.memory_allocated('cuda:0')))
+                            else:
+                                if(hasFeatureMask!=None):
+                                    inputGrad_perInput = Grad.attribute(torch.from_numpy(newInput),
+                                                        baselines=hasBaseline,
+                                                        target=TestingLabel,
+                                                        feature_mask=hasFeatureMask,
+                                                        additional_forward_args=(False)).data.cpu().numpy()    
+                                elif(hasSliding_window_shapes!=None):
+                                    inputGrad_perInput = Grad.attribute(torch.from_numpy(newInput),
+                                                                        sliding_window_shapes=hasSliding_window_shapes,
+                                                                        baselines=hasBaseline, 
+                                                                        target=TestingLabel,
+                                                                        additional_forward_args=(False)).data.cpu().numpy()
+                                else:
+                                    inputGrad_perInput = Grad.attribute(torch.from_numpy(newInput),
+                                                                        baselines=hasBaseline,
+                                                                        target=TestingLabel,
+                                                                        additional_forward_args=(False)).data.cpu().numpy()
+
+
+
+                            inputGrad_perInput_numpy=np.absolute(ActualGrad - inputGrad_perInput_numpy)
+                            inputGrad[r:r+10, c:c+10, 0] = np.sum(inputGrad_perInput_numpy)
+
+                        featureContibution = inputGrad #preprocessing.minmax_scale(inputGrad)
+                else:
+                    print("In Else")
+                    featureContibution=np.ones((input_size[0], input_size[1], 1))*0.1
+
                 for r in range(0, input_size[0], 10):
                     for c in range(0, input_size[1], 10):
-                        newInput = input.clone()
-                        newInput[0, 1, :, r:r+10, c:c+10] = assignment
-                        if(hasBaseline==None):  
-                            inputGrad_perInput = Grad.attribute(newInput,
-                                                                target=TestingLabel,
-                                                                additional_forward_args=(False)).data.cpu().numpy()
-                        else:
-                            if(hasFeatureMask!=None):
-                                inputGrad_perInput = Grad.attribute(newInput,
-                                                    baselines=hasBaseline,
-                                                    target=TestingLabel,
-                                                    feature_mask=hasFeatureMask,
-                                                    additional_forward_args=(False)).data.cpu().numpy()    
-                            elif(hasSliding_window_shapes!=None):
-                                inputGrad_perInput = Grad.attribute(newInput,
-                                                                    sliding_window_shapes=hasSliding_window_shapes,
-                                                                    baselines=hasBaseline, 
-                                                                    target=TestingLabel,
-                                                                    additional_forward_args=(False)).data.cpu().numpy()
-                            else:
-                                inputGrad_perInput = Grad.attribute(newInput,
-                                                                    baselines=hasBaseline,
-                                                                    target=TestingLabel,
-                                                                    additional_forward_args=(False)).data.cpu().numpy()
+                        newGrad [r:r+10, c:c+10, t]= timeContibution[0,t]*featureContibution[r:r+10, c:c+10, 0]
 
-
-
-                        inputGrad_perInput=np.absolute(ActualGrad - inputGrad_perInput)
-                        inputGrad[r:r+10, c:c+10, 0] = np.sum(inputGrad_perInput)
-
-                    featureContibution = inputGrad #preprocessing.minmax_scale(inputGrad)
-            else:
-                featureContibution=np.ones((input_size[0], input_size[1], 1))*0.1
-
-            for r in range(0, input_size[0], 10):
-                for c in range(0, input_size[1], 10):
-                    newGrad [r:r+10, c:c+10, t]= timeContibution[0,t]*featureContibution[r:r+10, c:c+10, 0]
-    else:
-        newGrad = ActualGrad
-    return newGrad, timeContibution
+                del featureContibution
+                t = t+1
+        else:
+            newGrad = ActualGrad
+        return newGrad, timeContibution
 
 def predict(clip, model):
     if opt.no_mean_norm and not opt.std_norm:
@@ -212,7 +244,7 @@ def predict(clip, model):
     if spatial_transform is not None:
         clip = [spatial_transform(img).to(device) for img in clip]
 
-    model.eval()
+    model.train()
     clip = torch.stack(clip, dim=0)
     clip = clip.unsqueeze(0)
     with torch.no_grad():
@@ -270,7 +302,7 @@ if __name__ == "__main__":
 
             data = load_annotation_data(opt.annotation_path)
             class_to_idx = get_class_labels(data)
-            use_cuda = False
+            use_cuda = True
             device = torch.device("cuda" if use_cuda else "cpu")
             print(class_to_idx)
             idx_to_class = {}
@@ -285,6 +317,7 @@ if __name__ == "__main__":
 
             if opt.resume_path:
                 resume_model(opt, model)
+                model = nn.DataParallel(model)
                 opt.mean = get_mean(opt.norm_value, dataset=opt.mean_dataset)
                 opt.std = get_std(opt.norm_value)
                 images = [f for f in os.listdir(dataset_path) if f.endswith('jpg')]
@@ -299,6 +332,7 @@ if __name__ == "__main__":
                     clip.append(frame)
 
                 grads, tsr_grads, time_contribution = saliency(clip, model, device, torch.tensor(target).to(device))
+                grads = grads.cpu()
                 saveSaliency(time_contribution, save_folder, "/tsr/"+ opt.model + "_tsr_time_contribution")
                 saveSaliency(tsr_grads, save_folder, "/tsr/"+ opt.model + "_tsr_saliency")
                 saveSaliency(grads, save_folder, "/grad/"+ opt.model + "_grad_saliency")
