@@ -96,7 +96,11 @@ If you want to use TSR, set a flag to true in frame_saliency.py
 
 # Results
 ## Temporal saliency
-
+![alt test](https://github.com/sakshikakde/interpretability_of_lstm/blob/kth/doc_images/temp_walking.png)
+![alt test](https://github.com/sakshikakde/interpretability_of_lstm/blob/kth/doc_images/temp_running.png)
+## Feature saliency 
+![alt test](https://github.com/sakshikakde/interpretability_of_lstm/blob/kth/doc_images/feature_walking.png)
+![alt test](https://github.com/sakshikakde/interpretability_of_lstm/blob/kth/doc_images/feature_running.png)
 
 
 
