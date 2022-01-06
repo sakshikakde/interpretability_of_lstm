@@ -32,18 +32,50 @@ will closely resemble the optical flow. As optical flow can
 be easily calculated this provides a good baseline for the
 qualitative evaluation of the generated saliency maps. 
 
-
-
+# Dataset 
+## File structure
+    .
+    ├── data
+    │   ├── raw_dataset
+    │   │   ├── kth_data (copy the walking and running data here)
+    │   │   │   ├── running 
+    │   │   │   ├── walking
+    │   ├── kth
+    │   │   ├── annotations 
+    │   │   ├── image_data
+    │   │   │   ├── running
+    │   │   │   ├── walking
+    │   ├── kth_trimmed
+    │   │   ├── running 
+    │   │   ├── walking
+    ├── model
+    ├── utils
+    └── other .py files
+## Data generation
+### Download
+- The dataset can be downloaded from ![here](https://www.csc.kth.se/cvap/actions/). We are using only the walking and running classes.
+- Copy the data inside the raw_data folder. Refer file structure above.
+### Trimming the videos
+- Run the following command from the root directory     
+``` python3 utils/trim_videos.py ```
+### Data preperation
+- Run the followig command          
+``` ./utils/generate_data.sh ```
 # How to run code 
 ## Train
-
+```
 python3 main.py --use_cuda --gpu 0 --batch_size 8 --n_epochs 50 --num_workers 0  --annotation_path ./data/annotation/ucf101_01.json --video_path ./data/image_data/  --dataset ucf101 --sample_size 150 --lr_rate 1e-4 --n_classes 3
+```
 
 ## Test for video classification output 
+```
 python3 inference.py  --annotation_path ./data/annotation/ucf101_01.json  --dataset ucf101 --model cnnlstm --n_classes 3 --resume_path <model path>
+```
     
 ## Get Saliency
+```
 python3 saliency.py  --annotation_path ./data/annotation/ucf101_01.json  --dataset ucf101 --model cnnlstm --n_classes 3 --resume_path <model path>
+```
     
 ## Plot Saliency 
 python3 plotSaliency.py
