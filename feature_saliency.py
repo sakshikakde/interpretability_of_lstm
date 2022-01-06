@@ -22,6 +22,7 @@ from temporal_transforms import LoopPadding, TemporalRandomCrop
 from target_transforms import ClassLabel, VideoID
 from target_transforms import Compose as TargetCompose
 import numpy as np
+from plotSaliency import plotHeatMapExampleWise
 
 
 def resume_model(opt, model):
@@ -31,7 +32,7 @@ def resume_model(opt, model):
     model.load_state_dict(checkpoint['state_dict'])
 
 
-def predict(clip, model):
+def saliency(clip, model, target_class):
     if opt.no_mean_norm and not opt.std_norm:
         norm_method = Normalize([0, 0, 0], [1, 1, 1])
     elif not opt.std_norm:
@@ -41,29 +42,46 @@ def predict(clip, model):
 
     spatial_transform = Compose([
         Scale((150, 150)),
-        #Scale(int(opt.sample_size / opt.scale_in_test)),
-        #CornerCrop(opt.sample_size, opt.crop_position_in_test),
         ToTensor(opt.norm_value), norm_method
     ])
     if spatial_transform is not None:
-        # spatial_transform.randomize_parameters()
         clip = [spatial_transform(img) for img in clip]
+
+    model.zero_grad()
 
     clip = torch.stack(clip, dim=0)
     clip = clip.unsqueeze(0)
-    with torch.no_grad():
-        print(clip.shape)
-        outputs = model(clip)
-        outputs = F.softmax(outputs)
+    clip.requires_grad = True
+    outputs = model(clip, training = False)
+    resout = model.resnet_out
+    print("resout shape = ", resout[0].shape)
+
+    outputs = F.softmax(outputs, dim = 1)
+    outputs, _ = torch.topk(outputs, k=1)   
     print(outputs)
-    scores, idx = torch.topk(outputs, k=1)
-    preds = idx
-    return preds
+    outputs.backward()
+    grad = [] #resout.grad.data.cpu().numpy()
+    saliency = [] #np.abs(grad)
+
+    for i in range(clip.shape[1]):
+        res_grad = resout[i].grad.data.cpu().numpy()
+        print("res_grad shape = ", res_grad.shape)
+        grad.append(res_grad)
+        saliency.append(np.absolute(res_grad))
+    # print("Saliency = ", saliency)
+    print("sal length = ", len(saliency))
+    print("sal ele length = ", saliency[0].shape)
+    return np.array(grad).squeeze(), np.array(saliency).squeeze()
+
+def saveSaliency(saliency, folder_name, file_name):
+    np.save(folder_name + file_name, saliency)
+    print("Saliency maps saved as ", file_name)
 
 
 if __name__ == "__main__":
     opt = parse_opts()
     print(opt)
+    save_folder = "./saliency/temporal/"
     data = load_annotation_data(opt.annotation_path)
     class_to_idx = get_class_labels(data)
     device = torch.device("cpu")
@@ -73,39 +91,30 @@ if __name__ == "__main__":
         idx_to_class[label] = name
 
     model = generate_model(opt, device)
+    ModelTypes = "lstm_cnn"
 
-    # model = nn.DataParallel(model, device_ids=None)
-    # print(model)
     if opt.resume_path:
         resume_model(opt, model)
         opt.mean = get_mean(opt.norm_value, dataset=opt.mean_dataset)
         opt.std = get_std(opt.norm_value)
-        model.eval()
-
-        cam = cv2.VideoCapture('./data/kth_trimmed_data/running/0_person01_running_d1_uncomp.avi')
-        clip = []
-        total_frames = int(cam.get(cv2.CAP_PROP_FRAME_COUNT))
         
-        N = total_frames - 1
-        print("total_frames = ", total_frames)
-
+        cam = cv2.VideoCapture('./data/kth_trimmed_data/running/0_person01_running_d1_uncomp.avi')
+        total_frames = int(cam.get(cv2.CAP_PROP_FRAME_COUNT))
+        N = total_frames-1
+        clip = []
         for i in range(total_frames):
             ret, img = cam.read()
             if len(clip) == N:
-                preds = predict(clip, model)
-                print("predictions = ", preds)
-                print("Class = ", idx_to_class[preds.item()])
-                font = cv2.FONT_HERSHEY_SIMPLEX
-                if preds.size(0) != 0:
-                    for f in range(len(clip)):
-                        frame = np.array(clip[f])
-                        cv2.putText(frame, idx_to_class[preds.item()], (50, 50), font, .5, (255, 255, 255), 1, cv2.LINE_AA)
-                        cv2.imshow('window', frame)
-                        cv2.waitKey()
+                grad, sal = saliency(clip, model, 1)
+                saveSaliency(sal.squeeze(), save_folder, ModelTypes)
                 clip = []
 
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             img = Image.fromarray(img)
             clip.append(img)
 
-    cv2.destroyAllWindows()
+
+    #plot saliency
+    sal = (255 * (sal / np.max(sal))).astype(np.uint8)
+    plotHeatMapExampleWise(sal.T, ModelTypes, save_folder)
+

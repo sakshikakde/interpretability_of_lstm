@@ -14,13 +14,8 @@ from model import generate_model
 from torch.optim import lr_scheduler
 from dataset import get_training_set, get_validation_set
 from mean import get_mean, get_std
-from spatial_transforms import (
-	Compose, Normalize, Scale, CenterCrop, CornerCrop, MultiScaleCornerCrop,
-	MultiScaleRandomCrop, RandomHorizontalFlip, ToTensor)
-from temporal_transforms import LoopPadding, TemporalRandomCrop
+from torchvision import transforms
 from target_transforms import ClassLabel, VideoID
-from target_transforms import Compose as TargetCompose
-
 import time
 
 
@@ -40,19 +35,22 @@ def get_loaders(opt):
 	"""
 	# train loader
 	opt.mean = get_mean(opt.norm_value, dataset=opt.mean_dataset)
+	# opt.std = get_std()
 	if opt.no_mean_norm and not opt.std_norm:
-		norm_method = Normalize([0, 0, 0], [1, 1, 1])
+		norm_method = transforms.Normalize([0, 0, 0], [1, 1, 1])
 	elif not opt.std_norm:
-		norm_method = Normalize(opt.mean, [1, 1, 1])
+		norm_method = transforms.Normalize(opt.mean, [1, 1, 1])
 	else:
-		norm_method = Normalize(opt.mean, opt.std)
-	spatial_transform = Compose([
+		norm_method = transforms.Normalize(opt.mean, opt.std)
+	spatial_transform = transforms.Compose([
 		# crop_method,
-		Scale((opt.sample_size, opt.sample_size)),
-		# RandomHorizontalFlip(),
-		ToTensor(opt.norm_value), norm_method
+		transforms.Scale((opt.sample_size, opt.sample_size)),
+		#grayscale
+		# transforms.Grayscale(num_output_channels=1),
+		transforms.ToTensor(), 
+		norm_method
 	])
-	temporal_transform = TemporalRandomCrop(16)
+	temporal_transform = None #TemporalRandomCrop(16)
 	target_transform = ClassLabel()
 	training_data = get_training_set(opt, spatial_transform,
 									 temporal_transform, target_transform)
@@ -64,15 +62,8 @@ def get_loaders(opt):
 		pin_memory=True)
 
 	# validation loader
-	spatial_transform = Compose([
-		Scale((opt.sample_size, opt.sample_size)),
-		# CenterCrop(opt.sample_size),
-		ToTensor(opt.norm_value), norm_method
-	])
-	target_transform = ClassLabel()
-	temporal_transform = LoopPadding(16)
-	validation_data = get_validation_set(
-		opt, spatial_transform, temporal_transform, target_transform)
+	validation_data = get_validation_set(opt, spatial_transform, 
+										temporal_transform, target_transform)
 	val_loader = torch.utils.data.DataLoader(
 		validation_data,
 		batch_size=opt.batch_size,
@@ -117,6 +108,11 @@ def main_worker():
 		start_epoch = 1
 
 	# start training
+	best_val_accuracy = 0
+	best_state = None
+	best_epoch = None
+	best_val_loss = None
+
 	for epoch in range(start_epoch, opt.n_epochs + 1):
 		train_loss, train_acc = train_epoch(
 			model, train_loader, criterion, optimizer, epoch, opt.log_interval, device)
@@ -136,10 +132,20 @@ def main_worker():
 			summary_writer.add_scalar(
 				'acc/val_acc', val_acc * 100, global_step=epoch)
 
-			timestamp = time.strftime('%b-%d-%Y_%H%M', time.localtime())
+			# timestamp = time.strftime('%b-%d-%Y_%H%M', time.localtime())
 			state = {'epoch': epoch, 'state_dict': model.state_dict(), 'optimizer_state_dict': optimizer.state_dict()}
-			torch.save(state, os.path.join('snapshots', f'{opt.model}-Epoch-{epoch}-Loss-{val_loss}_{timestamp}.pth'))
-			print("Epoch {} model saved!\n".format(epoch))
+			if(val_acc >= best_val_accuracy):
+				best_state = state
+				best_epoch = epoch
+				best_val_loss = val_loss
+				best_val_accuracy = val_acc
+
+	if not os.path.exists("snapshots/"+opt.model):
+		os.mkdir("snapshots/" + opt.model)
+
+	timestamp = time.strftime('%b-%d-%Y_%H%M', time.localtime())
+	torch.save(best_state, os.path.join("snapshots/" + opt.model, f'{opt.model}-Epoch-{best_epoch}-Loss-{best_val_loss}_{timestamp}.pth'))
+	print("Best model saved with val accuracy ", best_val_accuracy)
 
 
 if __name__ == "__main__":
